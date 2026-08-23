@@ -8,6 +8,10 @@ import { Button } from "./ui/button";
 import CreateJobApplicationDialog from "./create-job-dialog";
 import JobApplicationCard from "./job-application-card";
 import { useBoard } from "@/lib/hooks/use-boards";
+import { closestCorners, DndContext, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { traceGlobals } from "next/dist/trace/shared";
+import { CSS } from "@dnd-kit/utilities"; 
 
 interface KanbanBoardProps{
     board: Board;
@@ -45,6 +49,14 @@ const COLUMN_CONFIG: Array<ColConfig> = [
 function DroppableColumn({column, config, boardId, sortedColumns}: 
     {column: Column; config: ColConfig; boardId: string; sortedColumns: Column[] }){
     
+    const {setNodeRef, isOver} = useDroppable({
+        id: column._id,
+        data: {
+            type: "column",
+            columnId: column._id,
+        }
+    });
+
     const sortedJobs = column.jobApplications.sort((a,b) => a.order - b.order) || [];
     
     return (
@@ -77,22 +89,43 @@ function DroppableColumn({column, config, boardId, sortedColumns}:
             </CardHeader>
 
             {/* Card Content */}
-            <CardContent className="space-y-2 pt-4 bg-card min-h-[400px] rounded-b-lg">
-                 {sortedJobs.map((job, key)=> (
-                    <SortableJobCard 
-                    key={key} 
-                    job={{...job, columnId: job.columnId || column._id}} 
-                    columns={sortedColumns}/>
+            <CardContent 
+             ref={setNodeRef} 
+             className={`space-y-2 pt-4 bg-card min-h-[400px] rounded-b-lg ${isOver ? "ring-2 ring-primary ": ""}`}>
+                <SortableContext 
+                 items={sortedJobs.map((job) => job._id)} 
+                 strategy={verticalListSortingStrategy}>
+                    {sortedJobs.map((job, key)=> (
+                        <SortableJobCard 
+                         key={key} 
+                         job={{...job, columnId: job.columnId || column._id}} 
+                         columns={sortedColumns}/>
                  ))}
+                </SortableContext>
                  <CreateJobApplicationDialog columnId={column._id} boardId={boardId}/>   
             </CardContent>
         </Card>);
 }
 
 function SortableJobCard({job, columns}: {job: JobApplication; columns: Column[] }){
+    
+    const {attributes, listeners, transform, transition, isDragging, setNodeRef} = useSortable({
+        id: job._id,
+        data: {
+            type:"job",
+            job, 
+        }
+    });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
     return (
-        <div>
-            <JobApplicationCard job={job} columns={columns} />
+        <div ref={setNodeRef} style={style}>
+            <JobApplicationCard job={job} columns={columns} dragHandleProps={{...attributes, ...listeners}} />
         </div>
     );
 }
@@ -104,9 +137,27 @@ export default function KanbanBoard({board, userId}: KanbanBoardProps){
     
     const sortedColumns = columns?.sort((a,b) => a.order - b.order) || [];
     
+    const sensors = useSensors(useSensor(PointerSensor, {
+        activationConstraint: {
+            distance: 8,
+        }
+    }));
+
+    async function handleDragStart(){
+
+    }
+
+    async function handleDragEnd() {
+        
+    }
 
     return (
-        <>
+        <DndContext 
+            id="kanban-board"  
+            sensors = {sensors} // Detects Distance Between Boundaries
+            collisionDetection={closestCorners} // Detects Boundaries
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}>
             <div>
                 <div>
                     {columns.map((col, key) => {
@@ -123,7 +174,7 @@ export default function KanbanBoard({board, userId}: KanbanBoardProps){
                     })}
                 </div>
             </div>
-        </>
+        </DndContext>
     );
 }
 

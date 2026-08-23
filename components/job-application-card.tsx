@@ -31,23 +31,22 @@ export default function JobApplicationCard({job, columns}: JobApplicationCardPro
     description: job.description || "",
     });
 
-    async function handleUpdate(e: React.FormEvent<HTMLFormElement>){
-        e.preventDefault;
-        try{
-            const result = await updateJobApplication(job._id,{
+    async function handleUpdate(e: React.FormEvent) {
+        e.preventDefault();
+        try {
+            const result = await updateJobApplication(job._id, {
                 ...formData,
-                 tags: formData.tags
-                    .split(",")
-                    .map((tag) => tag.trim())
-                    .filter((tag) => tag.length > 0),
+                tags: formData.tags
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter((tag) => tag.length > 0),
             });
 
-            if(!result.error){
+            if (!result.error) {
                 setIsEditing(false);
             }
-
-        }catch(err){
-            console.error("Fail to Edit the Job Application", err)
+        } catch (err) {
+            console.error("Failed to move job application: ", err);
         }
     }
 

@@ -4,7 +4,7 @@ import { Card, CardContent } from "./ui/card";
 import { Edit2, ExternalLink, MoreVertical, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { updateJobApplication } from "@/lib/actions/job-applications";
+import { deleteJobApplication, updateJobApplication } from "@/lib/actions/job-applications";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
@@ -56,7 +56,19 @@ export default function JobApplicationCard({job, columns}: JobApplicationCardPro
                 columnId: newColumnId,
             });
         }catch(err){
-            console.error("Fail to Move the Job Application", err)
+            console.error("Fail to Move the Job Application", err);
+        }
+    }
+
+     async function handleDelete(){
+        try{
+            const result = await deleteJobApplication(job._id);
+
+            if(result.error){
+                console.error("Fail to Move the Job Application", result.error);
+            }
+        }catch(err){
+            console.error("Fail to Move the Job Application", err);
         }
     }
     
@@ -125,7 +137,7 @@ export default function JobApplicationCard({job, columns}: JobApplicationCardPro
                                             ))}
                                         </>
                                     )}
-                                    <DropdownMenuItem className="text-destructive">
+                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete()}>
                                         <Trash2 className="mr-2 h-4 w-4" />
                                         Delete
                                     </DropdownMenuItem>

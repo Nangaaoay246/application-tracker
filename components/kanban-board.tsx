@@ -8,7 +8,7 @@ import { Button } from "./ui/button";
 import CreateJobApplicationDialog from "./create-job-dialog";
 import JobApplicationCard from "./job-application-card";
 import { useBoard } from "@/lib/hooks/use-boards";
-import { closestCorners, DndContext, DragEndEvent, DragStartEvent, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { closestCorners, DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { traceGlobals } from "next/dist/trace/shared";
 import { CSS } from "@dnd-kit/utilities"; 
@@ -242,6 +242,9 @@ export default function KanbanBoard({board, userId}: KanbanBoardProps){
         await moveJob(activeId, targetColumnId, newOrder);
     }
 
+    const activeJob = sortedColumns
+     .flatMap((c) => c.jobApplications || [])
+     .find((j) => j._id === activeId);
     return (
         <DndContext 
             id="kanban-board"  
@@ -251,7 +254,7 @@ export default function KanbanBoard({board, userId}: KanbanBoardProps){
             onDragEnd={handleDragEnd}>
             <div className="space-y-4">
                 <div className="flex gap-4 overflow-x-auto pb-4">
-                    {columns.map((col, key) => {
+                    {sortedColumns.map((col, key) => {
                         const config = COLUMN_CONFIG[key] || {
                             color: "bg-gray-500",
                             icon: <Calendar className="h-4 w-4" />,
@@ -265,6 +268,15 @@ export default function KanbanBoard({board, userId}: KanbanBoardProps){
                     })}
                 </div>
             </div>
+            <DragOverlay>
+                {activeJob 
+                ? (
+                    <div className="opacity-50">
+                        <JobApplicationCard job={activeJob} columns={sortedColumns}/>
+                    </div>
+                )
+                : null}
+            </DragOverlay>
         </DndContext>
     );
 }

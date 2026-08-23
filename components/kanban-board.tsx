@@ -8,10 +8,11 @@ import { Button } from "./ui/button";
 import CreateJobApplicationDialog from "./create-job-dialog";
 import JobApplicationCard from "./job-application-card";
 import { useBoard } from "@/lib/hooks/use-boards";
-import { closestCorners, DndContext, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
+import { closestCorners, DndContext, DragEndEvent, DragStartEvent, PointerSensor, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { traceGlobals } from "next/dist/trace/shared";
 import { CSS } from "@dnd-kit/utilities"; 
+import { useState } from "react";
 
 interface KanbanBoardProps{
     board: Board;
@@ -133,6 +134,8 @@ function SortableJobCard({job, columns}: {job: JobApplication; columns: Column[]
 
 export default function KanbanBoard({board, userId}: KanbanBoardProps){
     
+    const [activeId, setActiveId] = useState<string | null>(null);
+
     const {columns, moveJob} = useBoard(board);
     
     const sortedColumns = columns?.sort((a,b) => a.order - b.order) || [];
@@ -143,12 +146,100 @@ export default function KanbanBoard({board, userId}: KanbanBoardProps){
         }
     }));
 
-    async function handleDragStart(){
-
+    async function handleDragStart(event: DragStartEvent){
+        setActiveId(event.active.id as string);
     }
 
-    async function handleDragEnd() {
-        
+    async function handleDragEnd(event: DragEndEvent) {
+        const {active, over} = event;
+
+        setActiveId(null);
+
+        if(!over || !board._id) return;
+
+        const activeId = active.id as string;
+        const overId = over.id as string;
+
+        let draggedJob: JobApplication | null = null;
+        let sourceColumn: Column | null = null;
+        let sourceIndex= -1;
+
+        for(const column of sortedColumns){
+            const jobs = column.jobApplications.sort((a,b) => a.order - b.order) || [];
+            const jobIndex = jobs.findIndex((j) => j._id === activeId);
+            if(jobIndex !== -1){
+                draggedJob = jobs[jobIndex];
+                sourceColumn = column;
+                sourceIndex = jobIndex;
+                break
+            }
+        }
+
+        if(!draggedJob || !sourceColumn) return;
+
+        // Check if dropped in a column or a job
+
+        const targetColumn = sortedColumns.find((col) => col._id === overId);
+        const targetJob = sortedColumns.flatMap((col) => col.jobApplications || []).find((job) => job._id === overId);
+
+        let targetColumnId: string;
+        let newOrder: number;
+
+        // Dropped on a column
+        if(targetColumn){
+            targetColumnId = targetColumn._id;
+            const jobsInTarget = targetColumn.jobApplications
+             .filter((job) => job._id !== activeId)
+             .sort((a,b) => a.order - b.order)  || [];
+            newOrder = jobsInTarget.length;
+        } 
+        // If Dropped on another Job
+        else if (targetJob){
+            const targetJobColumn = sortedColumns
+             .find((col) => col.jobApplications
+              .some((job) => job._id = targetJob._id));
+            targetColumnId = targetJob.columnId || targetJobColumn?._id || "";
+            if (!targetColumnId) return;
+
+            const targetColumnObj = sortedColumns
+             .find((col) => col._id === targetColumnId);
+
+             if(!targetColumnObj) return;
+
+             const allJobsInTargetOriginal = targetColumnObj.jobApplications
+              .sort((a,b) => a.order - b.order) || [];
+
+            const allJobsInTargetFiltered = allJobsInTargetOriginal
+             .filter((job) => job._id !== activeId);
+
+            const targetIndexInOriginal = allJobsInTargetOriginal
+             .findIndex((job) => job._id === overId);
+            
+            const targetIndexInFiltered = allJobsInTargetFiltered
+             .findIndex((job) => job._id === overId);
+
+             if(targetIndexInFiltered !== -1){
+                if(sourceColumn._id === targetColumnId ){
+                    if(sourceIndex < targetIndexInOriginal){
+                        newOrder = targetIndexInFiltered + 1;
+                    } else {
+                        newOrder = targetIndexInFiltered;
+                    }
+                } else{
+                    newOrder = targetIndexInFiltered;
+                } 
+             } else {
+                newOrder = allJobsInTargetFiltered.length;
+            }
+        } else {
+            return;
+        }
+
+        if(!targetColumnId){
+            return;
+        }
+
+        await moveJob(activeId, targetColumnId, newOrder);
     }
 
     return (

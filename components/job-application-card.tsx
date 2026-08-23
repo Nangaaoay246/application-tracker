@@ -1,9 +1,15 @@
+"use client";
 import { Column, JobApplication } from "@/lib/models/models.types";
 import { Card, CardContent } from "./ui/card";
 import { Edit2, ExternalLink, MoreVertical, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
 import { updateJobApplication } from "@/lib/actions/job-applications";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Label } from "./ui/label";
+import { Input } from "./ui/input";
+import React, { useState } from "react";
+import { Textarea } from "./ui/textarea";
 
 interface JobApplicationCardProps{
     job: JobApplication;
@@ -12,6 +18,39 @@ interface JobApplicationCardProps{
 
 export default function JobApplicationCard({job, columns}: JobApplicationCardProps){
     
+    const [isEditing, setIsEditing] = useState(false);
+    const [formData, setFormData] = useState({
+    company: job.company,
+    position: job.position,
+    location: job.location || "",
+    notes: job.notes || "",
+    salary: job.salary || "",
+    jobUrl: job.jobUrl || "",
+    columnId: job.columnId || "",
+    tags: job.tags?.join(", ") || "",
+    description: job.description || "",
+    });
+
+    async function handleUpdate(e: React.FormEvent<HTMLFormElement>){
+        e.preventDefault;
+        try{
+            const result = await updateJobApplication(job._id,{
+                ...formData,
+                 tags: formData.tags
+                    .split(",")
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag.length > 0),
+            });
+
+            if(!result.error){
+                setIsEditing(false);
+            }
+
+        }catch(err){
+            console.error("Fail to Edit the Job Application", err)
+        }
+    }
+
     async function handleMove(newColumnId: string){
         try{
             const result = await updateJobApplication(job._id,{
@@ -70,7 +109,7 @@ export default function JobApplicationCard({job, columns}: JobApplicationCardPro
                                     </Button>
                                 }/>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setIsEditing(true)}>
                                         <Edit2 className="mr-2 h-4 w-4" />
                                         Edit
                                     </DropdownMenuItem>
@@ -97,6 +136,111 @@ export default function JobApplicationCard({job, columns}: JobApplicationCardPro
                     </div>
                 </CardContent>
             </Card>
+            {/* Diaog Box For Edit */}
+             <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Add Job Applications</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">Track a New Job Application</DialogDescription>
+                    </DialogHeader>
+                    {/* Form */}
+                    <form className="space-y-4" onSubmit={handleUpdate}>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Company */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="company">Company *</Label>
+                                    <Input
+                                    id="company"
+                                    required
+                                    value={formData.company}
+                                    onChange={(e) => setFormData({...formData, company: e.target.value})}/>
+                                </div>
+                                {/* Position */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="position">Position *</Label>
+                                    <Input
+                                    id="position"
+                                    value={formData.position}
+                                    onChange={(e) => setFormData({...formData, position: e.target.value})}
+                                    required/>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                    {/* Location */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="location">Location</Label>
+                                    <Input
+                                    id="location"
+                                    value={formData.location}
+                                    onChange={(e) => setFormData({...formData, location: e.target.value})}/>
+                                </div>
+                                {/* Salary */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="salary">Salary</Label>
+                                    <Input
+                                    id="salary"
+                                    value={formData.salary}
+                                    onChange={(e) => setFormData({...formData, salary: e.target.value})}
+                                    placeholder="e.g., ₱30k - ₱50k"/>
+                                </div>
+                            </div>
+                            {/* Job URL */}
+                            <div className="space-y-2">
+                                <Label htmlFor="jobUrl">Job Url</Label>
+                                    <Input
+                                    id="jobUrl"
+                                    value={formData.jobUrl}
+                                    onChange={(e) => setFormData({...formData, jobUrl: e.target.value})}
+                                    placeholder="https://..."/>
+                            </div>
+                            {/* Tags */}
+                            <div className="space-y-2">
+                                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                                    <Input
+                                    id="tags"
+                                    value={formData.tags}
+                                    onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                                    placeholder="Software Engineer, React, Tailwind"/>
+                            </div>
+                            {/* Description */}
+                            <div className="space-y-2">
+                                <Label htmlFor="description">Description</Label>
+                                    <Textarea
+                                    rows={3}
+                                    id="description"
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                    placeholder="Brief Description of the Role"/>
+                            </div>
+                            {/* Notes */}
+                            <div className="space-y-2">
+                                <Label htmlFor="notes">Notes</Label>
+                                    <Textarea
+                                    rows={3}
+                                    id="notes"
+                                    value={formData.notes}
+                                    onChange={(e) => setFormData({...formData, notes: e.target.value})}/>
+                            </div>
+                        </div>
+                        
+                        <DialogFooter>
+                            {/* Cancel Button */}
+                            <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsEditing(false)}>
+                                Cancel
+                            </Button>
+                            {/* Submit Button */}
+                            <Button
+                            type="submit">
+                                Save Changes 
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

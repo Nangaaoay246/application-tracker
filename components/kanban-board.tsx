@@ -71,21 +71,6 @@ function DroppableColumn({column, config, boardId, sortedColumns}:
                             {column.name}
                         </CardTitle>
                     </div>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger render = {
-                            <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-primary-foreground hover:bg-background/20">
-                                <MoreVertical className="h-4 w-4"/>
-                            </Button>
-                        }/>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4"/> Delete Column
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </div>
             </CardHeader>
 

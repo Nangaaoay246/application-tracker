@@ -19,7 +19,7 @@ export default function Navbar(){
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2 text-xl font-semibold text-primary">
                     <Briefcase/>
-                    Job Tracker
+                    Applyd
                 </Link>
                 {/* Links */}
                 {session?.user 
